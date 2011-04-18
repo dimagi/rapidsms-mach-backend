@@ -44,17 +44,20 @@ class MachBackend(RapidHttpBackend):
             return http.HttpResponseBadRequest("")
 
     def message(self, data):
+        encoding = self.config.get('encoding', 'ascii')
+        encoding_errors = self.config.get('encoding_errors', 'ignore')
         sms = data.get(self.incoming_message_param, '')
+        sms = sms.decode(encoding, encoding_errors)
         sender = data.get(self.incoming_phone_number_param, '')
         if not sms or not sender:
             error_msg = u"ERROR: Missing %(msg)s or %(phone_number)s. parameters received are: %(params)s" % {
                 "msg" : self.incoming_message_param, 
                 "phone_number": self.incoming_phone_number_param,
-                "params": unicode(request.POST)
+                "params": unicode(data)
             }
             self.error(error_msg)
             return None
-        now = datetime.utcnow()
+        now = datetime.datetime.utcnow()
         try:
             msg = super(MachBackend, self).message(sender, sms, now)
         except Exception, e:
