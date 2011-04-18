@@ -1,0 +1,9 @@
+*.pyc
+*.pyo
+*.pydevproject
+*.project
+*.sqlite3
+*.sqlite*
+*.log.*
+*.log
+*.idea
