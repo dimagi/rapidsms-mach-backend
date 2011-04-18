@@ -96,3 +96,13 @@ def test_incoming_unicode_characters():
     data = {'snr': '1112229999', 'msg': text}
     message = backend.message(data)
     assert_equals(text.decode(basic_conf['config']['encoding']), message.text)
+
+
+def test_required_config_parameters():
+    """ id, password, and number are required in the backend config. """
+    
+    for key in ['id', 'password', 'number']:
+        config = basic_conf.copy()
+        del config['config'][key]
+        assert_raises(MachImproperlyConfigured, MachBackend, name="mach", router=None, **config)
+
