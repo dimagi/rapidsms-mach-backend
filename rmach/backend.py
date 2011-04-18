@@ -2,7 +2,6 @@ import datetime
 import urllib
 import urllib2
 
-
 from django import http
 from django.core.exceptions import ImproperlyConfigured
 

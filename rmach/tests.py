@@ -100,7 +100,6 @@ def test_incoming_unicode_characters():
 
 def test_required_config_parameters():
     """ id, password, and number are required in the backend config. """
-    
     for key in ['id', 'password', 'number']:
         config = basic_conf.copy()
         del config['config'][key]
