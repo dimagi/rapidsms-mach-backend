@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import urllib
 import urllib2
 
@@ -67,12 +68,19 @@ class MachBackend(RapidHttpBackend):
     def prepare_message(self, message):
         encoding = self.config.get('encoding', 'ascii')
         encoding_errors = self.config.get('encoding_errors', 'ignore')
+        sender = self.config['number']
+        destination = message.connection.identity
+        msg = message.text.encode(encoding, encoding_errors)
+        if not destination.startswith("+"):
+            destination = u"+%s" % destination
+        password = self.config['password']
         data = {
-            "snr": self.config['number'],
+            "snr": sender,
             "id": self.config['id'],
-            "pw": self.config['password'],
-            "dnr": message.connection.identity,
-            "msg": message.text.encode(encoding, encoding_errors),
+            "pw": password,
+            "dnr": destination,
+            "msg": msg,
+            "test": self.config.get('test', 0)
         }
         return data
 
@@ -86,11 +94,9 @@ class MachBackend(RapidHttpBackend):
                 if "-ERR" in line:
                     # fail
                     self.error(u"Error from gateway: %s" % line)
-                    self.debug(response)
                     return False
         except Exception, e:
             self.exception(e)
             return False
         self.info('SENT')
-        self.debug(response)
         return True
