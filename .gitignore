@@ -7,3 +7,6 @@
 *.log.*
 *.log
 *.idea
+dist/*
+build/*
+*.egg-info/*
