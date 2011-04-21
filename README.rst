@@ -21,3 +21,13 @@ Add rmach to your Python path and setup the backend in your Django settings file
             }
         },
     }
+
+
+Running Tests
+----------------
+
+To run the test suite you need to install django, rapidsms and django_nose. You can then
+run the test suite using `django-admin.py`:
+
+    django-admin.py test rmach --settings=test_settings
+
