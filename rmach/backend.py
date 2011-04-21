@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import math
 import urllib
 import urllib2
 
@@ -14,6 +15,8 @@ class MachImproperlyConfigured(ImproperlyConfigured):
 
 
 class MachBackend(RapidHttpBackend):
+    max_ascii_length = 160
+    max_unicode_length = 70
 
     def configure(self, host="localhost", port=8080, config=None, **kwargs):
         if "params_incoming" not in kwargs:
@@ -66,11 +69,13 @@ class MachBackend(RapidHttpBackend):
         return msg
 
     def prepare_message(self, message):
-        encoding = self.config.get('encoding', 'ascii')
-        encoding_errors = self.config.get('encoding_errors', 'ignore')
         sender = self.config['number']
         destination = message.connection.identity
-        msg = message.text.encode(encoding, encoding_errors)
+        msg = message.text
+        is_ascii = self._is_ascii(msg)
+        length = len(msg)
+        if not is_ascii:
+            msg = msg.encode('UTF-16', 'ignore')
         if not destination.startswith("+"):
             destination = u"+%s" % destination
         password = self.config['password']
@@ -82,7 +87,20 @@ class MachBackend(RapidHttpBackend):
             "msg": msg,
             "test": self.config.get('test', 0)
         }
+        if not is_ascii:
+            data['encoding'] = 'ucs'
+            if length > self.max_unicode_length:
+                data["split"] = math.ceil(length / float(self.max_unicode_length))
+        elif length > self.max_ascii_length:
+            data["split"] = math.ceil(length / float(self.max_ascii_length))
         return data
+
+    def _is_ascii(self, msg):
+        try:
+            test = msg.encode('ascii', 'strict')
+            return True
+        except UnicodeEncodeError:
+            return False
 
     def send(self, message):
         self.info(u"Sending message: %s" % message)
