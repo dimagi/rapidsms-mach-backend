@@ -51,7 +51,7 @@ class MachBackend(RapidHttpBackend):
             return http.HttpResponseBadRequest("")
 
     def message(self, data):
-        encoding = self.config.get('encoding', 'ascii')
+        encoding = self.config.get('encoding', 'UTF-8')
         encoding_errors = self.config.get('encoding_errors', 'ignore')
         sms = data.get(self.incoming_message_param, '')
         sms = sms.decode(encoding, encoding_errors)
