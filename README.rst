@@ -16,8 +16,19 @@ Add rmach to your Python path and setup the backend in your Django settings file
                 'id': 'XXXX',
                 'password': 'YYYYYYYY',
                 'number': '(###) ###-####',
-                'encoding': 'UTF-8', # optional message encoding
-                'encoding_errors': 'ignore', # optional encoding handling 
+                'encoding': 'UTF-8', # optional encoding for incoming messages
+                'encoding_errors': 'ignore', # optional encoding for incoming messages
+                'timeout': 8, # optional gateway timeout in seconds
             }
         },
     }
+
+
+Running Tests
+----------------
+
+To run the test suite you need to install django, rapidsms and django_nose. You can then
+run the test suite using `django-admin.py`:
+
+    django-admin.py test rmach --settings=test_settings
+

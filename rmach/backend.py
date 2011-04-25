@@ -1,5 +1,7 @@
 import datetime
 import hashlib
+import math
+import socket
 import urllib
 import urllib2
 
@@ -14,6 +16,11 @@ class MachImproperlyConfigured(ImproperlyConfigured):
 
 
 class MachBackend(RapidHttpBackend):
+    max_ascii_length = 160
+    max_unicode_length = 70
+    default_timeout = 8
+    gateway_url = "http://gw1.promessaging.com/sms.php"
+    backup_url = "http://gw2.promessaging.com/sms.php"
 
     def configure(self, host="localhost", port=8080, config=None, **kwargs):
         if "params_incoming" not in kwargs:
@@ -21,7 +28,7 @@ class MachBackend(RapidHttpBackend):
         if "params_outgoing" not in kwargs:
             kwargs["params_outgoing"] = "dnr=%(phone_number)s&msg=%(message)s"
         if "gateway_url" not in kwargs:
-            kwargs["gateway_url"] = "http://gw1.promessaging.com/sms.php"
+            kwargs["gateway_url"] = self.gateway_url
         super(MachBackend, self).configure(host, port, **kwargs)
         self.config = config
         if 'id' not in self.config:
@@ -44,7 +51,7 @@ class MachBackend(RapidHttpBackend):
             return http.HttpResponseBadRequest("")
 
     def message(self, data):
-        encoding = self.config.get('encoding', 'ascii')
+        encoding = self.config.get('encoding', 'UTF-8')
         encoding_errors = self.config.get('encoding_errors', 'ignore')
         sms = data.get(self.incoming_message_param, '')
         sms = sms.decode(encoding, encoding_errors)
@@ -66,11 +73,13 @@ class MachBackend(RapidHttpBackend):
         return msg
 
     def prepare_message(self, message):
-        encoding = self.config.get('encoding', 'ascii')
-        encoding_errors = self.config.get('encoding_errors', 'ignore')
         sender = self.config['number']
         destination = message.connection.identity
-        msg = message.text.encode(encoding, encoding_errors)
+        msg = message.text
+        is_ascii = self._is_ascii(msg)
+        length = len(msg)
+        if not is_ascii:
+            msg = msg.encode('UTF-16', 'ignore')
         if not destination.startswith("+"):
             destination = u"+%s" % destination
         password = self.config['password']
@@ -82,21 +91,46 @@ class MachBackend(RapidHttpBackend):
             "msg": msg,
             "test": self.config.get('test', 0)
         }
+        if not is_ascii:
+            data['encoding'] = 'ucs'
+            if length > self.max_unicode_length:
+                data["split"] = math.ceil(length / float(self.max_unicode_length))
+        elif length > self.max_ascii_length:
+            data["split"] = math.ceil(length / float(self.max_ascii_length))
         return data
+
+    def _is_ascii(self, msg):
+        try:
+            test = msg.encode('ascii', 'strict')
+            return True
+        except UnicodeEncodeError:
+            return False
 
     def send(self, message):
         self.info(u"Sending message: %s" % message)
         data = self.prepare_message(message)
         self.debug(u"Sending data: %s" % data)
-        try:
-            response = urllib2.urlopen(self.gateway_url, urllib.urlencode(data))
-            for line in response:
-                if "-ERR" in line:
-                    # fail
-                    self.error(u"Error from gateway: %s" % line)
+        timeout = self.config.get('timeout', self.default_timeout)
+        encoded_data = urllib.urlencode(data)
+        for url in [self.gateway_url, self.backup_url]:
+            try:
+                response = urllib2.urlopen(url, encoded_data, timeout)
+                for line in response:
+                    if "-ERR" in line:
+                        # fail
+                        self.error(u"Error from gateway: %s" % line)
+                        return False
+            except urllib2.URLError, e:
+                if isinstance(e.reason, socket.timeout):
+                    self.error(u"Gateway timeout: %s" % url)
+                    # Try the next gateway url
+                    continue
+                else:
+                    self.exception(e)
                     return False
-        except Exception, e:
-            self.exception(e)
-            return False
-        self.info('SENT')
-        return True
+            except Exception, e:
+                self.exception(e)
+                return False
+            self.info('SENT')
+            return True
+        return False

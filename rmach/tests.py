@@ -1,8 +1,10 @@
+import copy
 import unittest
 import urllib
 import logging
 import datetime
 import random
+import string
 
 from nose.tools import assert_equals, assert_raises, assert_true, assert_false
 
@@ -48,6 +50,10 @@ def random_unicode_string(max_length=255):
     return output
 
 
+def get_random_string(length=50, choices=string.ascii_letters):
+    return u''.join(random.choice(choices) for x in xrange(length))
+    
+
 def test_good_message():
     """ Make sure backend creates IncomingMessage properly """
     backend = MachBackend(name="mach", router=None, **basic_conf)
@@ -79,14 +85,15 @@ def test_backend_route():
 
 
 def test_outgoing_unicode_characters():
-    basic_conf['config']['encoding'] = 'UTF-8'
+    """ Outgoing unicode characters need to be UCS/UTF-16 encoded """
     backend = MachBackend(name="mach", router=None, **basic_conf)
     bk = Backend.objects.create(name='test')
     connection = Connection.objects.create(identity='1112229999', backend=bk)
     text = random_unicode_string(20)
     message = OutgoingMessage(connection, text)
     data = backend.prepare_message(message)
-    assert_equals(data['msg'].decode('UTF-8'), text)
+    assert_equals(data['msg'].decode('UTF-16'), text)
+    assert_true(data['encoding'], 'ucs')
 
 
 def test_incoming_unicode_characters():
@@ -101,7 +108,29 @@ def test_incoming_unicode_characters():
 def test_required_config_parameters():
     """ id, password, and number are required in the backend config. """
     for key in ['id', 'password', 'number']:
-        config = basic_conf.copy()
+        config = copy.deepcopy(basic_conf)
         del config['config'][key]
         assert_raises(MachImproperlyConfigured, MachBackend, name="mach", router=None, **config)
+
+
+def test_long_ascii_message():
+    """ ASCII messages over 160 characters should have a split parameter """
+    backend = MachBackend(name="mach", router=None, **basic_conf)
+    bk = Backend.objects.create(name='long-ascii')
+    connection = Connection.objects.create(identity='1112229999', backend=bk)
+    text = get_random_string(200)
+    message = OutgoingMessage(connection, text)
+    data = backend.prepare_message(message)
+    assert_equals(data['split'], 2)
+
+
+def test_long_unicode_message():
+    """ Unicode messages over 70 characters should have a split parameter """
+    backend = MachBackend(name="mach", router=None, **basic_conf)
+    bk = Backend.objects.create(name='long-unicode')
+    connection = Connection.objects.create(identity='1112229999', backend=bk)
+    text = get_random_string(200, choices=UNICODE_CHARS)
+    message = OutgoingMessage(connection, text)
+    data = backend.prepare_message(message)
+    assert_equals(data['split'], 3)
 
