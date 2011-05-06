@@ -16,8 +16,6 @@ Add rmach to your Python path and setup the backend in your Django settings file
                 'id': 'XXXX',
                 'password': 'YYYYYYYY',
                 'number': '(###) ###-####',
-                'encoding': 'UTF-8', # optional encoding for incoming messages
-                'encoding_errors': 'ignore', # optional encoding for incoming messages
                 'timeout': 8, # optional gateway timeout in seconds
             }
         },

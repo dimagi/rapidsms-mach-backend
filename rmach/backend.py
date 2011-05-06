@@ -21,6 +21,7 @@ class MachBackend(RapidHttpBackend):
     default_timeout = 8
     gateway_url = "http://gw1.promessaging.com/sms.php"
     backup_url = "http://gw2.promessaging.com/sms.php"
+    encoding = 'UTF-16'
 
     def configure(self, host="localhost", port=8080, config=None, **kwargs):
         if "params_incoming" not in kwargs:
@@ -51,10 +52,7 @@ class MachBackend(RapidHttpBackend):
             return http.HttpResponseBadRequest("")
 
     def message(self, data):
-        encoding = self.config.get('encoding', 'UTF-8')
-        encoding_errors = self.config.get('encoding_errors', 'ignore')
         sms = data.get(self.incoming_message_param, '')
-        sms = sms.decode(encoding, encoding_errors)
         sender = data.get(self.incoming_phone_number_param, '')
         if not sms or not sender:
             error_msg = u"ERROR: Missing %(msg)s or %(phone_number)s. parameters received are: %(params)s" % {
@@ -79,7 +77,7 @@ class MachBackend(RapidHttpBackend):
         is_ascii = self._is_ascii(msg)
         length = len(msg)
         if not is_ascii:
-            msg = msg.encode('UTF-16', 'ignore')
+            msg = msg.encode(self.__class__.encoding, 'ignore')
         if not destination.startswith("+"):
             destination = u"+%s" % destination
         password = self.config['password']
@@ -103,7 +101,7 @@ class MachBackend(RapidHttpBackend):
         try:
             test = msg.encode('ascii', 'strict')
             return True
-        except UnicodeEncodeError:
+        except (UnicodeEncodeError, UnicodeDecodeError, ):
             return False
 
     def send(self, message):
