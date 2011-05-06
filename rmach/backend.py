@@ -39,11 +39,11 @@ class MachBackend(RapidHttpBackend):
             raise MachImproperlyConfigured(u"Mach backend missing account number")
 
     def handle_request(self, request):
-        if request.method != 'POST':
-            self.info(u"Received request but wasn't POST. Doing nothing: %s" % request.GET)
-            return http.HttpResponseNotAllowed(['POST'])
-        self.info(u"Received request: %s" % request.POST)
-        msg = self.message(request.POST)
+        if request.method != 'GET':
+            self.info(u"Received request but wasn't GET. Doing nothing: %s" % request.POST)
+            return http.HttpResponseNotAllowed(['GET'])
+        self.info(u"Received request: %s" % request.GET)
+        msg = self.message(request.GET)
         if msg:
             self.route(msg)
             return http.HttpResponse("OK")
