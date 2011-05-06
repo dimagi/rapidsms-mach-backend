@@ -5,6 +5,7 @@ import logging
 import datetime
 import random
 import string
+import urlparse
 
 from nose.tools import assert_equals, assert_raises, assert_true, assert_false
 
@@ -92,17 +93,16 @@ def test_outgoing_unicode_characters():
     text = random_unicode_string(20)
     message = OutgoingMessage(connection, text)
     data = backend.prepare_message(message)
-    assert_equals(data['msg'].decode('UTF-16'), text)
+    assert_equals(data['msg'].decode(MachBackend.encoding), text)
     assert_true(data['encoding'], 'ucs')
 
 
 def test_incoming_unicode_characters():
-    basic_conf['config']['encoding'] = 'UTF-8'
     backend = MachBackend(name="mach", router=None, **basic_conf)
-    text = random_unicode_string(20).encode(basic_conf['config']['encoding'])
+    text = random_unicode_string(20)
     data = {'snr': '1112229999', 'msg': text}
     message = backend.message(data)
-    assert_equals(text.decode(basic_conf['config']['encoding']), message.text)
+    assert_equals(text, message.text)
 
 
 def test_required_config_parameters():
